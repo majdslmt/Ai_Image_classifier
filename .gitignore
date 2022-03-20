@@ -106,3 +106,5 @@ ENV/
 /.idea/vcs.xml
 .idea/Ai_Image_classifier.iml
 .idea/.gitignore
+/flower_data/
+/.idea/
