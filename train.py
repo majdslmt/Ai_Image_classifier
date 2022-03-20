@@ -1,17 +1,9 @@
 import time
 import json
 import torch
-import numpy as np
-import matplotlib.pyplot as plt
-import torch.nn.functional as F
 from torch import nn, optim
 from torchvision import datasets, transforms, models
-from collections import OrderedDict
-from PIL import Image
 from get_input_args import get_input_args
-import gc
-
-op = 0
 
 def main():
     input_args = get_input_args()

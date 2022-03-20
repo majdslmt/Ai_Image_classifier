@@ -7,8 +7,12 @@ def get_input_args():
     try:
     # Create 3 command line arguments as mentioned above using add_argument() from ArguementParser method
         parser.add_argument('--data_dir', type=str, default='flower_data', help='path to the folder of pet images')
-        parser.add_argument('--arch', type=str, default='densenet121', help='choices a type of CNN resnet, alexnet, or vgg')
-        parser.add_argument('--hidden_units ', type=int, default='512', help='path to the folder of pet images')
+        parser.add_argument('--arch', type=str, default='densenet121', help='choices a type of models, or vgg')
+        parser.add_argument('--hidden_units ', type=int, default='512', help='hidden_units')
+        parser.add_argument('--input', type=str, default='', help='path to the checkpoint')
+        parser.add_argument('--top_k', type=int, default='5', help='top_k')
+        parser.add_argument('--category_names', type=str, default='cat_to_name.json', help='path to the category_names file')
+        parser.add_argument('--image_path', type=str, default='cat_to_name.json', help='path to the image')
         in_args = parser.parse_args()
 
         if check_arch(in_args.arch):
