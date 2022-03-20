@@ -12,7 +12,7 @@ from get_input_args import get_input_args
 import gc
 
 def main():
-    xx = torch.cuda.memory_summary(device=None, abbreviated=False)
+    xx = torch.cuda.get_device_name('cuda')
     print(xx)
     input_args = get_input_args()
     train_dataloader, valid_dataloader, test_dataloader = load_data(input_args.data_dir)
@@ -25,7 +25,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-    model = init_model(input_args.arch)
+    model = init_model(input_args.arch, 512)
 
     print("start")
     training_network(model, train_dataloader,valid_dataloader, device)
@@ -69,7 +69,7 @@ def load_data(dir):
     return train_dataloader, valid_dataloader, test_dataloader
 
 
-def find_classifier(arch):
+def find_classifier(arch, hidden_units):
     if arch == "vgg13":
         classifier = nn.Sequential(
                             nn.Linear(25088, 4096),
@@ -83,54 +83,59 @@ def find_classifier(arch):
                         )
         return classifier
     else:
-        classifier = nn.Sequential(nn.Linear(2208, 1104),
+        classifier = nn.Sequential(nn.Linear(2208, hidden_units),
                                          nn.ReLU(),
                                          nn.Dropout(0.2),
-                                         nn.Linear(1104, 1000),
+                                         nn.Linear(hidden_units, int(hidden_units / 2)),
                                          nn.ReLU(),
                                          nn.Dropout(0.2),
-                                         nn.Linear(1000, 102),
+                                         nn.Linear(int(hidden_units / 2), 102),
                                          nn.LogSoftmax(dim=1))
         return classifier
 
 
-def init_model(arch):
+def init_model(arch, hidden_units):
     if arch == "vgg13":
         model = models.vgg13(pretrained = True)
-        model.classifier = find_classifier(arch)
+        for param in model.parameters():
+            param.requires_grad = False
+
+        model.classifier = find_classifier(arch, hidden_units)
         return model
     elif arch == "densenet121" :
         model = models.densenet121(pretrained = True)
-        model.classifier = find_classifier(arch)
+        for param in model.parameters():
+            param.requires_grad = False
+
+        model.classifier = find_classifier(arch, hidden_units)
         return model
     elif arch == "densenet161":
         model = models.densenet161(pretrained = True)
-        model.classifier = find_classifier(arch)
+        for param in model.parameters():
+            param.requires_grad = False
+
+        model.classifier = find_classifier(arch, hidden_units)
         return model
 
 
 def  training_network(model, train_dataloader,valid_dataloader, device):
-    for param in model.parameters():
-        param.requires_grad = False
-
-
+    torch.backends.cudnn.allow_tf32 = True
     print(model.classifier)
 
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.classifier.parameters(), lr=0.002)
     print_every = 5
-    epochs = 2
+    epochs = 20
     step = 0
     start_time = time.time()
     running_loss = 0
     print("training stared")
-    model.to('cpu')
+    model.to(device)
 
     for e in range(epochs):
         for (tr_inputs, tr_labels) in train_dataloader:  # for train
             step += 1
-            tr_inputs, tr_labels = tr_inputs.to('cpu'), tr_labels.to('cpu')
-            print(tr_labels)
+            tr_inputs, tr_labels = tr_inputs.to(device), tr_labels.to(device)
             optimizer.zero_grad()
 
             logps = model.forward(tr_inputs)
