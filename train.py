@@ -11,24 +11,23 @@ from PIL import Image
 from get_input_args import get_input_args
 import gc
 
-def main():
-    xx = torch.cuda.get_device_name('cuda')
-    print(xx)
-    input_args = get_input_args()
-    train_dataloader, valid_dataloader, test_dataloader = load_data(input_args.data_dir)
-    print(train_dataloader)
+op = 0
 
-    print(valid_dataloader)
+def main():
+    input_args = get_input_args()
+    train_dataloader, valid_dataloader, test_dataloader, image_datasets = load_data(input_args.data_dir)
+
 
     with open('cat_to_name.json', 'r') as f:
         cat_to_name = json.load(f)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
     model = init_model(input_args.arch, 512)
 
     print("start")
-    training_network(model, train_dataloader,valid_dataloader, device)
+    training_network(model, train_dataloader,valid_dataloader,test_dataloader, device, image_datasets)
+
 
 
 def load_data(dir):
@@ -62,11 +61,11 @@ def load_data(dir):
                       datasets.ImageFolder(valid_dir, transform=valid_transform),
                       datasets.ImageFolder(test_dir, transform=test_transform)]
 
-    train_dataloader = torch.utils.data.DataLoader(image_datasets[0], batch_size=64, shuffle=True)
-    valid_dataloader = torch.utils.data.DataLoader(image_datasets[1], batch_size=64, shuffle=True)
-    test_dataloader = torch.utils.data.DataLoader(image_datasets[2], batch_size=64, shuffle=True)
+    train_dataloader = torch.utils.data.DataLoader(image_datasets[0], batch_size=16, shuffle=True)
+    valid_dataloader = torch.utils.data.DataLoader(image_datasets[1], batch_size=16, shuffle=True)
+    test_dataloader = torch.utils.data.DataLoader(image_datasets[2], batch_size=16, shuffle=True)
     print("data has been loaded")
-    return train_dataloader, valid_dataloader, test_dataloader
+    return train_dataloader, valid_dataloader, test_dataloader, image_datasets
 
 
 def find_classifier(arch, hidden_units):
@@ -118,14 +117,15 @@ def init_model(arch, hidden_units):
         return model
 
 
-def  training_network(model, train_dataloader,valid_dataloader, device):
+def  training_network(model, train_dataloader,valid_dataloader,test_dataloader, device, image_datasets):
     torch.backends.cudnn.allow_tf32 = True
     print(model.classifier)
 
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.classifier.parameters(), lr=0.002)
     print_every = 5
-    epochs = 20
+    epochs = 2
+    epoch = 0
     step = 0
     start_time = time.time()
     running_loss = 0
@@ -172,8 +172,46 @@ def  training_network(model, train_dataloader,valid_dataloader, device):
                       f"Validation loss > {v_loss}",
                       f"accuracy > {accuracy}")
                 running_loss = 0
+                epoch = e
                 model.train()
+
+    testing_network(model,device, test_dataloader)
+    save_model(model, image_datasets, optimizer, epoch)
+
     print("done")
+
+
+def testing_network(model, device ,test_dataloader):
+    criterion = nn.NLLLoss()
+    t_loss = 0
+    accuracy = 0
+    with torch.no_grad():
+        for te_inputs, te_labels in test_dataloader:
+            te_inputs, te_labels = te_inputs.to(device), te_labels.to(device)
+            logps = model(te_inputs)
+            ps = torch.exp(logps)
+
+            b_loss = criterion(logps, te_labels)
+            t_loss += b_loss.item()
+
+            top_p, tp_class = ps.topk(1, dim=1)
+
+            eq = tp_class == te_labels.view(*tp_class.shape)
+
+            accuracy += torch.mean(eq.type(torch.FloatTensor)).item()
+
+            print(f"test loss is: {t_loss / len(test_dataloader)}",
+                  f"accuracy is: {accuracy / len(test_dataloader)}")
+
+
+def save_model(model, image_datasets, optimizer, e):
+    mode_checkpoint = {'model.classifier': model.classifier,
+                       'model.class_to_idx': image_datasets[0].class_to_idx,
+                       'state_dict': model.state_dict(),
+                       'epoch': e,
+                       'optimizer_state_dict': optimizer.state_dict()}
+
+    torch.save(mode_checkpoint, 'save_majed_checkpoint.pth')
 
 
 if __name__ == "__main__":

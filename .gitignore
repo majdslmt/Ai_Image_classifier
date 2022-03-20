@@ -108,3 +108,4 @@ ENV/
 .idea/.gitignore
 /flower_data/
 /.idea/
+save_majed_checkpoint.pth
