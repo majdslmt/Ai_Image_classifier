@@ -5,7 +5,7 @@ def get_input_args():
     parser = argparse.ArgumentParser()
 
     try:
-    # Create 3 command line arguments as mentioned above using add_argument() from ArguementParser method
+    # Create 8 command line arguments as mentioned above using add_argument() from ArguementParser method
         parser.add_argument('--data_dir', type=str, default='flower_data', help='path to the folder of pet images')
         parser.add_argument('--arch', type=str, default='densenet121', help='choices a type of models, or vgg')
         parser.add_argument('--hidden_units ', type=int, default='512', help='hidden_units')
@@ -13,6 +13,7 @@ def get_input_args():
         parser.add_argument('--top_k', type=int, default='5', help='top_k')
         parser.add_argument('--category_names', type=str, default='cat_to_name.json', help='path to the category_names file')
         parser.add_argument('--image_path', type=str, default='cat_to_name.json', help='path to the image')
+        parser.add_argument('--gpu', type=int, default='1', help='choices type of device')
         in_args = parser.parse_args()
 
         if check_arch(in_args.arch):
@@ -35,4 +36,9 @@ def check_arch(arch):
     else:
         return False
 
+def check_device(gpu):
+    if gpu == 1:
+        return "cuda"
+    elif gpu == 0:
+        return "cpu"
 
