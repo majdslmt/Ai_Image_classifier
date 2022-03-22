@@ -9,18 +9,14 @@ def main():
     input_args = get_input_args()
     train_dataloader, valid_dataloader, test_dataloader, image_datasets = load_data(input_args.data_dir)
     device = check_device(input_args.gpu)
-    if device == "cuda":
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") == "cpu"
-        if device == "cpu":
-            print("cuda is not available")
-
+    print(device)
     with open('cat_to_name.json', 'r') as f:
         cat_to_name = json.load(f)
 
     model = init_model(input_args.arch, 512)
 
     print("start")
-    training_network(model, train_dataloader,valid_dataloader,test_dataloader, device, image_datasets)
+    training_network(model, train_dataloader,valid_dataloader,test_dataloader, device, image_datasets, input_args.arch)
 
 
 #loading data
@@ -106,7 +102,7 @@ def init_model(arch, hidden_units):
         return model
 
 #trainig network
-def  training_network(model, train_dataloader,valid_dataloader,test_dataloader, device, image_datasets):
+def  training_network(model, train_dataloader,valid_dataloader,test_dataloader, device, image_datasets, arch):
     torch.backends.cudnn.allow_tf32 = True
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.classifier.parameters(), lr=0.002)
@@ -159,7 +155,7 @@ def  training_network(model, train_dataloader,valid_dataloader,test_dataloader, 
     #call testing network
     testing_network(model,device, test_dataloader)
     #call save model
-    save_model(model, image_datasets, optimizer, epoch)
+    save_model(model, image_datasets, optimizer, epoch, arch)
     print("done")
 
 #testing network
@@ -186,14 +182,14 @@ def testing_network(model, device ,test_dataloader):
                   f"accuracy is: {accuracy / len(test_dataloader)}")
 
 
-def save_model(model, image_datasets, optimizer, e):
+def save_model(model, image_datasets, optimizer, e, arch):
     mode_checkpoint = {'model.classifier': model.classifier,
                        'model.class_to_idx': image_datasets[0].class_to_idx,
                        'state_dict': model.state_dict(),
                        'epoch': e,
                        'optimizer_state_dict': optimizer.state_dict()}
 
-    torch.save(mode_checkpoint, 'save_majed_checkpoint2.pth')
+    torch.save(mode_checkpoint, f'save_checkpoint{arch}.pth')
 
 
 if __name__ == "__main__":

@@ -17,10 +17,6 @@ def main():
     train_dataloader, valid_dataloader, test_dataloader, image_datasets = load_data(input_args.data_dir)
     model = load_checkpoint(input_args.input, image_datasets)
     device = check_device(input_args.gpu)
-    if device == "cuda":
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") == "cpu"
-        if device == "cpu":
-            print("cuda is not available")
     with open('cat_to_name.json', 'r') as f:
         cat_to_name = json.load(f)
 
